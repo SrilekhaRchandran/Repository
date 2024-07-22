@@ -1,34 +1,49 @@
+import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+
 
 class NewsFeed:
     def __init__(self, driver):
         self.driver = driver
 
-    def newsFeed(self):
+    def navigate_to_news_page(self):
+        wait = WebDriverWait(self.driver, 20)
+        news = wait.until(
+            EC.element_to_be_clickable((By.XPATH, "//*[@class='MuiGrid-root css-rfnosa']/div/nav/ul/li[3]/a/div"))
+        )
+        news.click()
+
+    def navigate_next_news(self):
+        iframe = self.switch_to_news_iframe()
+        self.click_next_button()
+        self.driver.switch_to.default_content()
+        time.sleep(2)
+
+    def switch_to_news_iframe(self):
+        wait = WebDriverWait(self.driver, 20)
+        iframe = wait.until(EC.frame_to_be_available_and_switch_to_it((By.ID, "child-iframe")))
+        return iframe
+
+    def click_next_button(self):
+        wait = WebDriverWait(self.driver, 20)
         try:
-            # Wait for the button to be visible and clickable
-            wait = WebDriverWait(self.driver, 10)
+            next_button = wait.until(EC.element_to_be_clickable(
+                (By.XPATH, "//button[contains(@class, 'MuiButton-textPrimary') and contains(text(), 'Next')]")))
+            next_button.click()
+        except TimeoutException:
+            raise NoSuchElementException("Next button not found")
 
-            news = wait.until(EC.presence_of_element_located((By.XPATH, "//div[@id='__next']//main//div[1]//div[@class='MuiBox-root css-144ebsl']//nav//a//span")))
-            news.click()
+    def newsFeed(self):
+        self.navigate_to_news_page()
 
-        #     # Check if the dialog/overlay is present
-        #     dialog = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.MuiDialog-container")))
-        #     if dialog.is_displayed():
-        #         # If the dialog is present, try to click the button again
-        #         button = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "button.MuiButtonBase-root.MuiButton-root")))
-        #         if button.is_enabled():
-        #             button.click()
-        #             print("Clicked on the news section")
-        #         else:
-        #             print("Button is not clickable")
-        #     else:
-        #         print("Dialog/overlay not found")
-        #
-        # except Exception as e:
-        #     print(f"Error accessing news section: {e}")
-
+        try:
+            while True:
+                self.navigate_next_news()
+        except NoSuchElementException:
+            print("No more news articles. Exiting..")
         finally:
+            time.sleep(5)
             self.driver.quit()
